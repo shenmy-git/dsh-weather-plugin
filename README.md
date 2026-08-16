@@ -108,17 +108,9 @@ manifest 与 `cordis.patch.yml`）。发布到市场的步骤：
 
 打包安装细节见[官方打包教程](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)。
 
-## 素材与许可（发布前必读）
+## 数据源与许可
 
-| 素材 | 用途 | 许可状态 |
-|---|---|---|
-| **DeepSeek FishLogo 路径**（`src/client/assets/fish-logo.ts`） | 宠物鲸鱼轮廓，取自 `@deepseek-ai/dsh-client-ui-primitives` 官方图标 | ✅ DeepSeek 自家 logo（与插件同组织），复用官方包内图标路径，零第三方版权风险 |
-| 程序化 canvas 矢量绘制（鲸鱼渐变、喷泉、配件） | 宠物动画、天气配件（伞/围巾/闪电/太阳/月亮/云/雾/雨丝） | ✅ 原创代码，无外部素材 |
-| Open-Meteo API | 天气数据 | ⚠️ 非商业/个人使用免费；**商业用途需 Open-Meteo 商业许可**（见 open-meteo.com/en/terms），发布到市场前请确认你的发布性质 |
-| ipwho.is / ipapi.co | IP 定位 | ⚠️ 免费层有请求限额，需遵守各自服务条款（ipwho.is 商业使用需付费计划） |
+- 天气数据：[Open-Meteo](https://open-meteo.com/)（免费，无需 API key；商业使用需其商业许可）
+- IP 定位：ipwho.is → ipapi.co（免费层有请求限额，遵守各自服务条款）
+- 宠物鲸鱼为 DeepSeek 官方 FishLogo（`@deepseek-ai/dsh-client-ui-primitives`），动画与音效全部程序化生成，无第三方素材
 
-**猫动画**已于 0.9.2 起移除：宠物改为程序化绘制的官方 FishLogo 鲸鱼
-（canvas 矢量渲染，带尾部/背鳍/胸鳍关节动画、呼吸、眨眼、喷泉与天气配件），
-不再依赖任何第三方动画素材。
-
-任何第三方素材的署名/许可要求都必须随插件发布文件一起提供。
