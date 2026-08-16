@@ -1,0 +1,9 @@
+# dsh-weather-plugin 配置层：profile 列出该组合包时应用。
+# 插件行按包名引用，Node 模块解析会找到已安装的包代码。
+# 该包同时声明 dsh.client，其 client 半区会被 dsh-client-modules 自动发现。
+- insert:
+    - id: weather
+      name: dsh-weather-plugin
+      config:
+        defaultCity: '北京'
+        language: zh

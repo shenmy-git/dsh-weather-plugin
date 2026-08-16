@@ -1,0 +1,444 @@
+/* Weather ambient effects: full-page overlay and card mini-scene share these
+   classes and keyframes. All overlay elements are pointer-events: none. */
+
+/* ── full-page overlay shell ───────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 999;
+}
+
+.flashLayer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+  background: #fff;
+  opacity: 0;
+}
+
+.flashLayer.flashing {
+  animation: dsh-w-flash 320ms ease-out;
+}
+
+/* Per-condition translucent wash tinting the whole page. */
+.wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.wash.clear { background: radial-gradient(ellipse at 70% 20%, rgba(255, 214, 130, 0.22), transparent 60%); }
+.wash.partly { background: linear-gradient(180deg, rgba(160, 180, 205, 0.14), transparent 55%); }
+.wash.cloudy { background: linear-gradient(180deg, rgba(130, 140, 155, 0.18), transparent 60%); }
+.wash.fog { background: linear-gradient(180deg, rgba(180, 180, 180, 0.20), transparent 65%); }
+.wash.drizzle { background: linear-gradient(180deg, rgba(120, 150, 175, 0.16), transparent 60%); }
+.wash.rain { background: linear-gradient(180deg, rgba(70, 105, 145, 0.22), transparent 65%); }
+.wash.snow { background: radial-gradient(ellipse at 50% 0%, rgba(220, 235, 250, 0.25), transparent 65%); }
+.wash.thunder { background: linear-gradient(180deg, rgba(30, 35, 50, 0.35), rgba(30, 35, 50, 0.12) 70%, transparent); }
+
+/* ── celestial bodies ──────────────────────────────────────────────────── */
+
+.sun {
+  position: absolute;
+  top: 8%;
+  right: 12%;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd98c 0%, #ffb84d 55%, rgba(255, 184, 77, 0) 72%);
+  box-shadow: 0 0 60px 24px rgba(255, 190, 90, 0.45);
+  opacity: 0.9;
+}
+
+.sunRays {
+  position: absolute;
+  inset: -34px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 210, 120, 0.35) 0deg 12deg,
+    transparent 12deg 30deg
+  );
+  animation: dsh-w-spin 40s linear infinite;
+}
+
+.moon {
+  position: absolute;
+  top: 10%;
+  right: 16%;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 35%, #f4f1e8 0%, #cfc8b8 60%, rgba(207, 200, 184, 0) 74%);
+  box-shadow: 0 0 40px 14px rgba(220, 215, 200, 0.30);
+}
+
+.star {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.75;
+  animation: dsh-w-twinkle 2.4s ease-in-out infinite;
+}
+
+/* ── clouds & fog ──────────────────────────────────────────────────────── */
+
+.cloud {
+  position: absolute;
+  width: 130px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(235, 240, 246, 0.85);
+  box-shadow: inset -18px -8px 24px rgba(140, 155, 175, 0.28);
+  opacity: 0.55;
+  animation: dsh-w-drift 46s linear infinite;
+}
+
+.cloud::before,
+.cloud::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.cloud::before {
+  width: 52px;
+  height: 52px;
+  top: -26px;
+  left: 22px;
+}
+
+.cloud::after {
+  width: 66px;
+  height: 66px;
+  top: -38px;
+  right: 18px;
+}
+
+.fogBand {
+  position: absolute;
+  left: -40%;
+  width: 140%;
+  height: 90px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(215, 220, 228, 0.35), transparent);
+  filter: blur(6px);
+  animation: dsh-w-drift 70s linear infinite;
+}
+
+.fogCanvas {
+  display: none;
+  opacity: 0.9;
+}
+
+/* ── precipitation ─────────────────────────────────────────────────────── */
+
+.drop {
+  position: absolute;
+  top: -12vh;
+  width: 2.5px;
+  height: 26px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, transparent, rgba(165, 200, 238, 0.85));
+  animation: dsh-w-rain-fall 0.7s linear infinite;
+}
+
+.flake {
+  position: absolute;
+  top: -6vh;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 20%, rgba(255, 255, 255, 0.75) 70%);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+  animation: dsh-w-snow-fall 7s linear infinite;
+}
+
+/* ── rain sheet: full-screen tilted rain curtain behind the drops ─────── */
+
+.rainSheet {
+  position: absolute;
+  inset: -10% -20%;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    100deg,
+    rgba(170, 205, 240, 0.09) 0px,
+    rgba(170, 205, 240, 0.09) 1.5px,
+    transparent 1.5px,
+    transparent 5px
+  );
+  animation: dsh-w-sheet-move 0.9s linear infinite;
+}
+
+/* ── ground splash: droplets bursting where rain hits the floor ────────── */
+
+.splash {
+  position: absolute;
+  bottom: 3vh;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200, 225, 250, 0.95), rgba(200, 225, 250, 0) 70%);
+  animation: dsh-w-splash 0.8s ease-out infinite;
+}
+
+/* ── thunder cloud bank: dark clouds pressing down at the top ──────────── */
+
+.darkClouds {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 34vh;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 45vw 20vh at 15% 0%, rgba(28, 32, 46, 0.55), transparent 70%),
+    radial-gradient(ellipse 50vw 24vh at 55% -4%, rgba(22, 26, 38, 0.6), transparent 72%),
+    radial-gradient(ellipse 42vw 18vh at 90% 2%, rgba(30, 34, 48, 0.5), transparent 70%);
+  animation: dsh-w-clouds-press 9s ease-in-out infinite alternate;
+}
+
+/* ── rainbow (after drizzle) ── */
+
+.rainbow {
+  position: absolute;
+  top: 7%;
+  left: 12%;
+  width: 180px;
+  height: 90px;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.rainbow svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── sun beams (clear day): soft diagonal light shafts ─────────────────── */
+
+.sunBeams {
+  position: absolute;
+  top: -10%;
+  left: 40%;
+  width: 46vw;
+  height: 90vh;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    105deg,
+    rgba(255, 226, 160, 0.10) 0px,
+    rgba(255, 226, 160, 0.10) 60px,
+    transparent 60px,
+    transparent 130px
+  );
+  transform: rotate(4deg);
+  animation: dsh-w-beams-breathe 7s ease-in-out infinite;
+}
+
+/* ── ground fog band (fog / rain) ── */
+
+.groundFog {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: -4vh;
+  height: 22vh;
+  pointer-events: none;
+  background: linear-gradient(0deg, rgba(210, 218, 228, 0.30), transparent 90%);
+  filter: blur(10px);
+  animation: dsh-w-ground-fog 12s ease-in-out infinite alternate;
+}
+
+/* ── dark-theme boost: everything reads brighter on dark surfaces ──────── */
+
+body[data-ds-dark-theme] .drop {
+  background: linear-gradient(180deg, transparent, rgba(200, 226, 250, 0.95));
+}
+
+body[data-ds-dark-theme] .rainSheet {
+  background: repeating-linear-gradient(
+    100deg,
+    rgba(190, 218, 248, 0.13) 0px,
+    rgba(190, 218, 248, 0.13) 1.5px,
+    transparent 1.5px,
+    transparent 5px
+  );
+}
+
+body[data-ds-dark-theme] .splash {
+  background: radial-gradient(circle, rgba(220, 240, 255, 1), rgba(220, 240, 255, 0) 70%);
+}
+
+body[data-ds-dark-theme] .flashLayer {
+  background: #eaf3ff;
+}
+
+/* ── sun v2: soft layered glow + breathing disc, no rotating ray bars ──── */
+
+.sunV2 {
+  position: absolute;
+  top: 5%;
+  right: 9%;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(255, 244, 214, 0.95) 0%,
+    rgba(255, 222, 138, 0.9) 22%,
+    rgba(255, 196, 96, 0.55) 46%,
+    rgba(255, 184, 77, 0) 68%);
+  box-shadow:
+    0 0 70px 26px rgba(255, 196, 110, 0.35),
+    0 0 190px 90px rgba(255, 206, 120, 0.16),
+    0 0 340px 160px rgba(255, 216, 140, 0.08);
+  animation: dsh-w-sun-pulse 5.5s ease-in-out infinite;
+}
+
+/* ── refined drifting cloud (SVG) ── */
+
+.cloud {
+  position: absolute;
+  opacity: 0.6;
+  animation: dsh-w-drift 46s linear infinite;
+}
+
+/* ── seasonal particles ────────────────────────────────────────────────── */
+
+.petal {
+  position: absolute;
+  top: -6vh;
+  width: 10px;
+  height: 8px;
+  border-radius: 60% 40% 60% 40%;
+  background: rgba(244, 162, 180, 0.75);
+  animation: dsh-w-petal-fall 9s linear infinite;
+}
+
+.leafParticle {
+  position: absolute;
+  top: -6vh;
+  width: 12px;
+  height: 7px;
+  border-radius: 2px 10px 2px 10px;
+  background: rgba(216, 138, 60, 0.8);
+  animation: dsh-w-leaf-fall 11s linear infinite;
+}
+
+.lightDot {
+  position: absolute;
+  bottom: 12vh;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 214, 120, 0.85);
+  box-shadow: 0 0 8px rgba(255, 214, 120, 0.7);
+  animation: dsh-w-light-rise 8s ease-in-out infinite;
+}
+
+/* ── keyframes ─────────────────────────────────────────────────────────── */
+
+@keyframes dsh-w-rain-fall {
+  from { transform: translateY(-12vh); }
+  to { transform: translateY(115vh); }
+}
+
+@keyframes dsh-w-snow-fall {
+  0% { transform: translateY(-6vh) translateX(0); }
+  25% { transform: translateY(28vh) translateX(-26px); }
+  50% { transform: translateY(56vh) translateX(14px); }
+  75% { transform: translateY(84vh) translateX(-18px); }
+  100% { transform: translateY(112vh) translateX(0); }
+}
+
+@keyframes dsh-w-sheet-move {
+  from { background-position: 0 0; }
+  to { background-position: -40px 60px; }
+}
+
+@keyframes dsh-w-splash {
+  0% { transform: scale(0.3); opacity: 1; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+@keyframes dsh-w-clouds-press {
+  from { transform: translateY(0) scaleY(1); }
+  to { transform: translateY(3vh) scaleY(1.12); }
+}
+
+@keyframes dsh-w-beams-breathe {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+@keyframes dsh-w-ground-fog {
+  from { transform: translateX(-2vw); opacity: 0.8; }
+  to { transform: translateX(2vw); opacity: 1; }
+}
+
+@keyframes dsh-w-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes dsh-w-drift {
+  from { transform: translateX(-25vw); }
+  to { transform: translateX(125vw); }
+}
+
+@keyframes dsh-w-twinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.9; }
+}
+
+@keyframes dsh-w-flash {
+  0% { opacity: 0; }
+  18% { opacity: 0.85; }
+  40% { opacity: 0.1; }
+  58% { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+@keyframes dsh-w-sun-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes dsh-w-petal-fall {
+  0% { transform: translateY(-6vh) translateX(0) rotate(0deg); }
+  25% { transform: translateY(30vh) translateX(24px) rotate(60deg); }
+  50% { transform: translateY(60vh) translateX(-12px) rotate(120deg); }
+  75% { transform: translateY(90vh) translateX(18px) rotate(200deg); }
+  100% { transform: translateY(118vh) translateX(0) rotate(300deg); }
+}
+
+@keyframes dsh-w-leaf-fall {
+  0% { transform: translateY(-6vh) translateX(0) rotate(0deg); }
+  30% { transform: translateY(40vh) translateX(-30px) rotate(-40deg); }
+  60% { transform: translateY(75vh) translateX(22px) rotate(30deg); }
+  100% { transform: translateY(118vh) translateX(-8px) rotate(-80deg); }
+}
+
+@keyframes dsh-w-light-rise {
+  0% { transform: translateY(0); opacity: 0; }
+  30% { opacity: 0.9; }
+  100% { transform: translateY(-90vh); opacity: 0; }
+}
+
+/* ── accessibility ─────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .drop, .flake, .cloud, .fogBand, .sunRays, .star, .flashLayer.flashing,
+  .petal, .leafParticle, .lightDot, .rainSheet, .splash, .darkClouds,
+  .sunBeams, .groundFog {
+    animation: none;
+    display: none;
+  }
+  .wash { display: block; }
+}

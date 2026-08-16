@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dsh-weather-plugin 效果预览 v4</title>
+<style>
+  :root {
+    --bg: #f2f4f6; --panel: #f8f9fb; --panel2: #e9ebef; --border: #d5d9df;
+    --text: #1c1f24; --text2: #5f6670; --brand: #7a8aa0; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); height: 100vh; overflow: hidden;
+    transition: background .5s ease, color .5s ease;
+  }
+
+  #stage { position: fixed; inset: 0; }
+  .app-shell { position: absolute; inset: 0; display: flex; gap: 12px; padding: 12px; }
+  aside {
+    width: 210px; border-radius: var(--radius); background: var(--panel2);
+    border: 1px solid var(--border); padding: 14px; display: flex; flex-direction: column; gap: 10px;
+    transition: background .5s ease, border-color .5s ease;
+  }
+  aside .logo { font-weight: 700; font-size: 14px; color: var(--brand); }
+  aside .item { font-size: 12px; color: var(--text2); padding: 6px 8px; border-radius: 6px; }
+  aside .item.on { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
+  main { flex: 1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .chat-stub {
+    flex: 1; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--panel); padding: 16px; overflow: auto;
+    transition: background .5s ease, border-color .5s ease;
+  }
+  .chat-stub .bubble { max-width: 70%; padding: 8px 12px; border-radius: 10px; font-size: 12px; margin-bottom: 10px; }
+  .chat-stub .bubble.user { background: var(--brand); color: #fff; margin-left: auto; opacity: .9; }
+  .chat-stub .bubble.ai { background: var(--panel2); color: var(--text); }
+
+  #card {
+    width: 320px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--panel); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+    transition: background .5s ease, border-color .5s ease;
+  }
+  .card-head { display: flex; align-items: center; justify-content: space-between; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--text2); }
+  .card-right { display: flex; align-items: center; gap: 8px; }
+  .locate-tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--border); color: var(--text2); }
+  .sound-btn { font-size: 13px; border: 1px solid var(--border); border-radius: 999px; background: var(--panel2); color: var(--text2); padding: 4px 8px; cursor: pointer; }
+  .mini-scene { position: relative; height: 108px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: var(--bg); transition: background .5s ease; }
+  .mini-scene .big-icon { position: absolute; left: 16px; bottom: 12px; font-size: 34px; }
+  .mini-scene .temp { position: absolute; right: 16px; bottom: 14px; font-size: 30px; font-weight: 700; }
+  .mini-scene .cond { position: absolute; left: 58px; bottom: 14px; display: flex; flex-direction: column; gap: 3px; }
+  .mini-scene .cond b { font-size: 13px; }
+  .mini-scene .cond span { font-size: 11px; color: var(--text2); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stats .s b { font-size: 13px; }
+  .stats .s span { font-size: 11px; color: var(--text2); display: block; }
+  .companions { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); padding-top: 10px; border-top: 1px solid var(--border); }
+  .companions .pair { font-size: 18px; }
+  .companions .season { font-size: 10px; padding: 1px 7px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--border); }
+  .fact { font-size: 12px; line-height: 1.6; color: var(--text2); background: var(--panel2); border-radius: 8px; padding: 8px 10px; }
+  .fact b { color: var(--text); margin-right: 6px; }
+  .card-meta { font-size: 11px; color: var(--text2); }
+
+  #hud {
+    position: fixed; right: 24px; bottom: 24px; z-index: 60;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px 8px 8px; border-radius: 999px;
+    background: var(--panel2); border: 1px solid var(--border);
+    box-shadow: 0 4px 18px rgba(0,0,0,.15); cursor: pointer;
+    transition: background .5s ease, border-color .5s ease;
+  }
+  #petCanvas { width: 62px; height: 58px; image-rendering: pixelated; }
+  #hud .t { font-size: 15px; font-weight: 700; }
+  #hud .c { font-size: 11px; color: var(--text2); }
+  #hud .t, #hud .c { display: block; line-height: 1.25; }
+
+  #ambient { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 40; }
+  #fogCanvas { position: fixed; inset: 0; pointer-events: none; z-index: 41; opacity: .9; }
+  #flash { position: fixed; inset: 0; pointer-events: none; z-index: 50; background: #fff; opacity: 0; }
+  .wash { position: absolute; inset: 0; }
+  .drop { position: absolute; top: -10vh; width: 2px; height: 18px; border-radius: 2px;
+    background: linear-gradient(180deg, transparent, rgba(150,190,230,.55));
+    animation: rainFall .9s linear infinite; }
+  .flake { position: absolute; top: -6vh; width: 8px; height: 8px; border-radius: 50%;
+    background: radial-gradient(circle, #fff 20%, rgba(255,255,255,.55) 70%);
+    box-shadow: 0 0 6px rgba(255,255,255,.6); animation: snowFall 7s linear infinite; }
+
+  .sun-v2 {
+    position: absolute; top: 5%; right: 9%; width: 120px; height: 120px; border-radius: 50%;
+    background: radial-gradient(circle,
+      rgba(255,244,214,0.95) 0%, rgba(255,222,138,0.9) 22%,
+      rgba(255,196,96,0.55) 46%, rgba(255,184,77,0) 68%);
+    box-shadow: 0 0 70px 26px rgba(255,196,110,.35), 0 0 190px 90px rgba(255,206,120,.16), 0 0 340px 160px rgba(255,216,140,.08);
+    animation: sunPulse 5.5s ease-in-out infinite;
+  }
+  @keyframes sunPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  .moon {
+    position: absolute; top: 7%; right: 14%; width: 64px; height: 64px; border-radius: 50%;
+    background: radial-gradient(circle at 38% 35%, #f6f3ea 0%, #d8d1c2 55%, rgba(216,209,194,0) 72%);
+    box-shadow: 0 0 44px 16px rgba(226,220,206,.32), 0 0 120px 60px rgba(226,220,206,.12);
+    animation: moonGlow 5s ease-in-out infinite;
+  }
+  @keyframes moonGlow { 0%,100%{opacity:.85} 50%{opacity:1} }
+  .star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; animation: twinkle 2.4s ease-in-out infinite; }
+  .cloud-svg { position: absolute; opacity: .45; animation: cloudDrift 46s linear infinite; }
+  .grad-bottom { position: absolute; left: 0; right: 0; bottom: 0; height: 26vh; pointer-events: none; }
+  .grad-top { position: absolute; left: 0; right: 0; top: 0; height: 20vh; pointer-events: none; }
+
+  @keyframes rainFall { from { transform: translateY(-10vh); } to { transform: translateY(112vh); } }
+  @keyframes snowFall {
+    0% { transform: translateY(-6vh) translateX(0); }
+    25% { transform: translateY(28vh) translateX(-24px); }
+    50% { transform: translateY(56vh) translateX(14px); }
+    75% { transform: translateY(84vh) translateX(-16px); }
+    100% { transform: translateY(112vh) translateX(0); }
+  }
+  @keyframes twinkle { 0%,100% { opacity: .2; } 50% { opacity: .9; } }
+  @keyframes cloudDrift { from { transform: translateX(-25vw); } to { transform: translateX(125vw); } }
+  @keyframes flashAnim { 0%{opacity:0} 18%{opacity:.85} 40%{opacity:.1} 58%{opacity:.7} 100%{opacity:0} }
+
+  #controls {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    z-index: 80; display: flex; flex-direction: column; gap: 8px; align-items: center;
+    background: rgba(20,22,26,.93); color: #eee; padding: 12px 18px; border-radius: 14px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.4); max-width: 94vw;
+  }
+  #controls .row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  #controls .lbl { font-size: 11px; color: #9aa0a8; align-self: center; }
+  #controls button {
+    font-size: 12px; border: 1px solid #3a3f46; border-radius: 999px;
+    background: #262a30; color: #d5d9de; padding: 4px 12px; cursor: pointer; transition: all 120ms ease;
+  }
+  #controls button:hover { border-color: #5a6270; }
+  #controls button.active { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600; }
+  #controls .style-btn.active { background: #4f8fbf; border-color: #4f8fbf; }
+  #controls .pet-btn.active { background: #d98c5f; border-color: #d98c5f; }
+  #controls .note { font-size: 10px; color: #7a818b; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div class="app-shell">
+    <aside>
+      <div class="logo">⚡ DSH</div>
+      <div class="item on">对话</div>
+      <div class="item">工作区</div>
+      <div class="item">设置</div>
+    </aside>
+    <main>
+      <div class="chat-stub">
+        <div class="bubble user">今天天气怎么样？</div>
+        <div class="bubble ai">当前北京阴，25.7°C，体感 30.3°C，湿度 81%，风速 3.2 km/h。</div>
+        <div id="card"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="ambient"></div>
+<canvas id="fogCanvas"></canvas>
+<div id="flash"></div>
+
+<div id="hud">
+  <canvas id="petCanvas" width="124" height="116"></canvas>
+  <div><span class="t" id="hudTemp">22°C</span><span class="c" id="hudCity">北京</span></div>
+</div>
+
+<div id="controls">
+  <div class="row">
+    <span class="lbl">天气</span>
+    <button data-cond="clear">☀️ 晴</button>
+    <button data-cond="partly">🌤️ 多云</button>
+    <button data-cond="cloudy">☁️ 阴</button>
+    <button data-cond="fog">🌫️ 雾</button>
+    <button data-cond="drizzle">🌦️ 毛毛雨</button>
+    <button data-cond="rain">🌧️ 雨</button>
+    <button data-cond="snow">❄️ 雪</button>
+    <button data-cond="thunder">⛈️ 雷暴</button>
+  </div>
+  <div class="row">
+    <span class="lbl">画风</span>
+    <button class="pet-btn active" data-pet="real">🐈 写实</button>
+    <button class="pet-btn" data-pet="cute">🐱 可爱卡通</button>
+    <button class="pet-btn" data-pet="pixel">👾 像素</button>
+    <span class="lbl" style="margin-left:8px">风格</span>
+    <button class="style-btn active" data-style="a">A · 简洁粒子</button>
+    <button class="style-btn" data-style="b">B · 氛围光效</button>
+    <span class="lbl" style="margin-left:8px">模式</span>
+    <button data-mode="light" class="active">浅色</button>
+    <button data-mode="dark">深色</button>
+    <span class="lbl" style="margin-left:8px">时段</span>
+    <button data-period="day" class="active">白天</button>
+    <button data-period="night">夜间</button>
+  </div>
+  <div class="note">写实 = 真实猫比例 + 橘白虎斑 + 渐变光影 + 写实眼（虹膜/竖瞳/高光），JS 程序化绘制。点右下角宠物互动。</div>
+</div>
+
+<script>
+'use strict'
+/* ═══ 数据 ═══ */
+const PALETTES = {
+  clear:   { light: { bg:'#fdf8ec', p1:'#fffdf5', p2:'#f7f0dd', bd:'#e8dcc0', tx:'#1f1a0e', t2:'#6b5f45', brand:'#f59e0b' }, dark: { bg:'#1a1712', p1:'#221e16', p2:'#2a2519', bd:'#3a3222', tx:'#f5efe2', t2:'#b3a78c', brand:'#fbbf24' } },
+  partly:  { light: { bg:'#f7f6f2', p1:'#fcfbf8', p2:'#efeee9', bd:'#dedcd3', tx:'#26251f', t2:'#6d6b61', brand:'#d9a441' }, dark: { bg:'#17181a', p1:'#1e1f22', p2:'#26282b', bd:'#36383c', tx:'#ececea', t2:'#a8a79e', brand:'#e3b65c' } },
+  cloudy:  { light: { bg:'#f2f4f6', p1:'#f8f9fb', p2:'#e9ebef', bd:'#d5d9df', tx:'#1c1f24', t2:'#5f6670', brand:'#7a8aa0' }, dark: { bg:'#14161a', p1:'#1a1d22', p2:'#22262c', bd:'#33383f', tx:'#e6e8ec', t2:'#9ca3ad', brand:'#93a3ba' } },
+  fog:     { light: { bg:'#f5f5f5', p1:'#fafafa', p2:'#ececec', bd:'#dbdbdb', tx:'#222222', t2:'#6a6a6a', brand:'#9a9a9a' }, dark: { bg:'#161616', p1:'#1c1c1c', p2:'#232323', bd:'#353535', tx:'#e8e8e8', t2:'#a0a0a0', brand:'#b5b5b5' } },
+  drizzle: { light: { bg:'#f3f6f8', p1:'#f9fbfc', p2:'#e8edf1', bd:'#d3dbe1', tx:'#1b2025', t2:'#5d666e', brand:'#6b93b8' }, dark: { bg:'#13171b', p1:'#191e23', p2:'#21272d', bd:'#333b42', tx:'#e4e8ec', t2:'#99a2ab', brand:'#8fb3d4' } },
+  rain:    { light: { bg:'#eef3f8', p1:'#f6f9fc', p2:'#e3eaf1', bd:'#cdd8e2', tx:'#16202b', t2:'#55616d', brand:'#3b6ea5' }, dark: { bg:'#10141a', p1:'#161b22', p2:'#1e242c', bd:'#303a44', tx:'#e2e7ed', t2:'#939ea9', brand:'#5d8fc4' } },
+  snow:    { light: { bg:'#f4f8fc', p1:'#fafcff', p2:'#e9f0f7', bd:'#d5e0ea', tx:'#1a222c', t2:'#5a6673', brand:'#4f8fbf' }, dark: { bg:'#14181e', p1:'#1a1f27', p2:'#222933', bd:'#35404c', tx:'#e7ebf1', t2:'#9da7b3', brand:'#7fb4de' } },
+  thunder: { light: { bg:'#f1f2f4', p1:'#f9f9fa', p2:'#e7e8ea', bd:'#d6d7da', tx:'#1d1f23', t2:'#5f6268', brand:'#a16207' }, dark: { bg:'#101014', p1:'#17171c', p2:'#1f1f25', bd:'#33343b', tx:'#eae7e0', t2:'#a09d94', brand:'#f0b429' } },
+}
+const WASH = {
+  clear:   'radial-gradient(ellipse at 70% 20%, rgba(255,214,130,0.22), transparent 60%)',
+  partly:  'linear-gradient(180deg, rgba(160,180,205,0.14), transparent 55%)',
+  cloudy:  'linear-gradient(180deg, rgba(130,140,155,0.18), transparent 60%)',
+  fog:     'linear-gradient(180deg, rgba(180,180,180,0.20), transparent 65%)',
+  drizzle: 'linear-gradient(180deg, rgba(120,150,175,0.16), transparent 60%)',
+  rain:    'linear-gradient(180deg, rgba(70,105,145,0.22), transparent 65%)',
+  snow:    'radial-gradient(ellipse at 50% 0%, rgba(220,235,250,0.25), transparent 65%)',
+  thunder: 'linear-gradient(180deg, rgba(30,35,50,0.35), rgba(30,35,50,0.12) 70%, transparent)',
+}
+const LABELS = { clear:'晴', partly:'多云', cloudy:'阴', fog:'雾', drizzle:'毛毛雨', rain:'雨', snow:'雪', thunder:'雷暴' }
+const ICONS = { clear:'☀️', partly:'🌤️', cloudy:'☁️', fog:'🌫️', drizzle:'🌦️', rain:'🌧️', snow:'❄️', thunder:'⛈️' }
+const FACTS = {
+  clear: '向日葵的花盘在幼年期会跟着太阳转，成熟后就固定朝东了。',
+  partly: '云朵是白色的，是因为云滴把阳光中所有颜色的光都散射了回来。',
+  cloudy: '阴天空气湿度大、气压偏低，蜗牛会从壳里探出头来散步。',
+  fog: '雾其实是悬浮在空中的小水滴，太阳升起升温后就会慢慢消散。',
+  drizzle: '雨后蘑菇疯长，是因为菌丝吸饱了水分，一夜之间就能撑起菌盖。',
+  rain: '彩虹是阳光在雨滴里折射两次、反射一次的结果，所以红色在外、紫色在内。',
+  snow: '雪花几乎都是六角形，因为水分子结晶时总是按六边形对称排列。',
+  thunder: '闪电比雷声先到：光速约每秒 30 万公里，声速只有约 340 米。',
+}
+const COMPANIONS = {
+  clear: '🌻', partly: '🐦 ☁️', cloudy: '🐌 🍀', fog: '🦌 🌲', drizzle: '🐸 🍄', rain: '🐸 🌈', snow: '🐧 ❄️', thunder: '🦅 ⚡',
+}
+const TEMP = { clear: 28, partly: 24, cloudy: 22, fog: 18, drizzle: 20, rain: 19, snow: -2, thunder: 17 }
+
+let cond = 'cloudy', style = 'a', mode = 'light', period = 'day', petStyle = 'real'
+const $ = (id) => document.getElementById(id)
+
+/* ═══ 宠物基础 ═══ */
+const pet = $('petCanvas')
+const pctx = pet.getContext('2d')
+let petTime = 0, patUntil = 0, blinkUntil = 0, nextBlink = 2
+
+function petState() {
+  return {
+    scared: cond === 'thunder',
+    sleepy: cond === 'drizzle' || cond === 'cloudy',
+    happy: cond === 'clear' && period === 'day',
+    blink: petTime < blinkUntil,
+    pat: petTime < patUntil,
+  }
+}
+
+/* ═══ 写实猫（真实比例 + 橘白虎斑 + 渐变光影） ═══ */
+const FUR = '#e8944a'        // 背毛橘
+const FUR_HI = '#f5b06a'     // 亮面
+const FUR_D = '#c9742e'      // 深橘（虎斑）
+const BELLY = '#f7e6cd'      // 肚/胸米白
+const SHADOW = 'rgba(120,70,25,0.25)'
+
+function drawRealPet() {
+  const s = petState()
+  pctx.clearRect(0, 0, pet.width, pet.height)
+  pctx.save()
+  pctx.scale(pet.width / 124, pet.height / 116)
+
+  // 呼吸/弹跳
+  let breath = 1 + Math.sin(petTime * 1.7) * 0.015
+  if (s.pat) breath = 1 + Math.sin(petTime * 26) * 0.05 * Math.max(0, 1 - (petTime - patUntil + 0.8) / 0.8)
+  pctx.translate(62, 60)
+  pctx.scale(breath, 2 - breath)
+  pctx.translate(-62, -60)
+
+  // 地面阴影
+  pctx.fillStyle = 'rgba(0,0,0,0.10)'
+  pctx.beginPath(); pctx.ellipse(62, 104, 34, 6, 0, 0, Math.PI * 2); pctx.fill()
+
+  // 尾巴（从身后绕到身前，真实坐姿）
+  const wag = Math.sin(petTime * 2.2) * 3 + (s.happy ? 6 : 0)
+  pctx.strokeStyle = FUR
+  pctx.lineWidth = 7
+  pctx.lineCap = 'round'
+  pctx.beginPath()
+  pctx.moveTo(88, 92)
+  pctx.quadraticCurveTo(106, 88, 104, 72 + wag * 0.4)
+  pctx.stroke()
+  pctx.strokeStyle = FUR_D
+  pctx.lineWidth = 7
+  pctx.beginPath()
+  pctx.moveTo(98, 80 + wag * 0.4)
+  pctx.quadraticCurveTo(100, 74 + wag * 0.4, 104, 72 + wag * 0.4)
+  pctx.stroke()
+  pctx.lineWidth = 2.6
+
+  // ── 身体（坐姿：肩宽 → 坐底收窄，橘色渐变 + 肚白） ──
+  const bodyGrad = pctx.createLinearGradient(0, 40, 0, 104)
+  bodyGrad.addColorStop(0, FUR_HI)
+  bodyGrad.addColorStop(0.5, FUR)
+  bodyGrad.addColorStop(1, FUR_D)
+  pctx.fillStyle = bodyGrad
+  pctx.beginPath()
+  pctx.moveTo(42, 52)
+  pctx.bezierCurveTo(34, 60, 34, 84, 46, 100)
+  pctx.lineTo(78, 100)
+  pctx.bezierCurveTo(90, 84, 90, 60, 82, 52)
+  pctx.closePath()
+  pctx.fill()
+  // 身体侧影（右侧暗面）
+  pctx.fillStyle = SHADOW
+  pctx.beginPath()
+  pctx.moveTo(78, 56)
+  pctx.bezierCurveTo(86, 66, 86, 86, 76, 98)
+  pctx.lineTo(70, 98)
+  pctx.bezierCurveTo(80, 86, 80, 66, 72, 56)
+  pctx.closePath()
+  pctx.fill()
+  // 胸/肚米白（渐变过渡）
+  const bellyGrad = pctx.createLinearGradient(0, 56, 0, 100)
+  bellyGrad.addColorStop(0, 'rgba(247,230,205,0.25)')
+  bellyGrad.addColorStop(0.6, 'rgba(247,230,205,0.95)')
+  pctx.fillStyle = bellyGrad
+  pctx.beginPath()
+  pctx.moveTo(48, 58)
+  pctx.bezierCurveTo(44, 72, 46, 90, 56, 100)
+  pctx.lineTo(68, 100)
+  pctx.bezierCurveTo(78, 90, 80, 72, 76, 58)
+  pctx.closePath()
+  pctx.fill()
+
+  // 身体虎斑（背部弧线）
+  pctx.strokeStyle = FUR_D
+  pctx.lineWidth = 2.2
+  pctx.globalAlpha = 0.7
+  for (const [x0, y0, x1, y1] of [[46, 62, 54, 66], [44, 70, 53, 74], [44, 78, 54, 82], [46, 86, 56, 90]]) {
+    pctx.beginPath()
+    pctx.moveTo(x0, y0)
+    pctx.quadraticCurveTo(38, y0 + 2, x1, y1)
+    pctx.stroke()
+  }
+  pctx.globalAlpha = 1
+
+  // 后腿（蹲坐：两侧圆润大腿）
+  const thighGrad = pctx.createLinearGradient(0, 78, 0, 104)
+  thighGrad.addColorStop(0, FUR)
+  thighGrad.addColorStop(1, FUR_D)
+  pctx.fillStyle = thighGrad
+  pctx.beginPath(); pctx.ellipse(40, 94, 10, 9, 0.15, 0, Math.PI * 2); pctx.fill()
+  pctx.beginPath(); pctx.ellipse(84, 94, 10, 9, -0.15, 0, Math.PI * 2); pctx.fill()
+
+  // 前腿（两条直立 + 白爪）
+  const legGrad = pctx.createLinearGradient(0, 66, 0, 102)
+  legGrad.addColorStop(0, FUR_HI)
+  legGrad.addColorStop(1, FUR)
+  pctx.fillStyle = legGrad
+  roundRect(pctx, 46, 66, 9, 34, 4); pctx.fill()
+  roundRect(pctx, 69, 66, 9, 34, 4); pctx.fill()
+  // 爪垫白
+  pctx.fillStyle = BELLY
+  pctx.beginPath(); pctx.ellipse(50.5, 98, 4, 3, 0, 0, Math.PI * 2); pctx.fill()
+  pctx.beginPath(); pctx.ellipse(73.5, 98, 4, 3, 0, 0, Math.PI * 2); pctx.fill()
+
+  // ── 头（真实比例：椭圆，宽度约 36） ──
+  const headGrad = pctx.createRadialGradient(54, 34, 4, 62, 42, 24)
+  headGrad.addColorStop(0, FUR_HI)
+  headGrad.addColorStop(0.7, FUR)
+  headGrad.addColorStop(1, FUR_D)
+  pctx.fillStyle = headGrad
+  pctx.beginPath()
+  pctx.moveTo(44, 40)
+  pctx.bezierCurveTo(42, 24, 52, 20, 62, 20)
+  pctx.bezierCurveTo(72, 20, 82, 24, 80, 40)
+  pctx.bezierCurveTo(80, 52, 74, 56, 62, 56)
+  pctx.bezierCurveTo(50, 56, 44, 52, 44, 40)
+  pctx.closePath()
+  pctx.fill()
+  // 脸颊毛（两侧蓬出）
+  pctx.fillStyle = 'rgba(244,176,106,0.5)'
+  pctx.beginPath(); pctx.ellipse(44, 46, 7, 9, 0.3, 0, Math.PI * 2); pctx.fill()
+  pctx.beginPath(); pctx.ellipse(80, 46, 7, 9, -0.3, 0, Math.PI * 2); pctx.fill()
+
+  // 耳朵（尖耳，外橘内粉，耳尖毛簇；雷暴后压）
+  const earSquish = cond === 'thunder' ? 3 : 0
+  const earL = (x, y) => {
+    pctx.fillStyle = FUR
+    pctx.beginPath()
+    pctx.moveTo(x, y)
+    pctx.quadraticCurveTo(x - 5, y - 15, x + 5, y - 16)
+    pctx.quadraticCurveTo(x + 8, y - 10, x + 7, y - 5)
+    pctx.closePath()
+    pctx.fill()
+    pctx.fillStyle = '#f2b8a8'
+    pctx.beginPath()
+    pctx.moveTo(x + 1, y - 4)
+    pctx.quadraticCurveTo(x - 1, y - 11, x + 5, y - 12)
+    pctx.quadraticCurveTo(x + 6, y - 7, x + 5, y - 4)
+    pctx.closePath()
+    pctx.fill()
+  }
+  earL(44, 24 + earSquish)
+  earL(80, 24 + earSquish)
+  // 额头 M 纹（虎斑标志）
+  pctx.strokeStyle = FUR_D
+  pctx.lineWidth = 2
+  pctx.globalAlpha = 0.85
+  pctx.beginPath()
+  pctx.moveTo(53, 26); pctx.quadraticCurveTo(58, 30, 62, 25)
+  pctx.moveTo(62, 25); pctx.quadraticCurveTo(66, 30, 71, 26)
+  pctx.moveTo(57, 26); pctx.lineTo(60, 31)
+  pctx.moveTo(67, 26); pctx.lineTo(64, 31)
+  pctx.stroke()
+  // 脸颊横纹
+  pctx.beginPath()
+  pctx.moveTo(46, 40); pctx.lineTo(52, 41)
+  pctx.moveTo(78, 40); pctx.lineTo(72, 41)
+  pctx.moveTo(45, 46); pctx.lineTo(51, 46)
+  pctx.moveTo(79, 46); pctx.lineTo(73, 46)
+  pctx.stroke()
+  pctx.globalAlpha = 1
+
+  // 配件（伞在头顶上方、围巾、闪电、太阳、月亮、云）
+  drawRealAccessory(s)
+
+  // ── 眼睛（写实：虹膜渐变 + 竖瞳 + 高光 + 眼皮） ──
+  const eye = (cx, dir) => {
+    // 眼白
+    pctx.fillStyle = '#fffdf7'
+    pctx.beginPath(); pctx.ellipse(cx, 37, 5.4, 6, 0, 0, Math.PI * 2); pctx.fill()
+    // 虹膜（黄绿渐变）
+    const ir = pctx.createRadialGradient(cx - 1, 36, 0.5, cx, 37, 4.6)
+    ir.addColorStop(0, '#c8b13a')
+    ir.addColorStop(0.6, '#8a9440')
+    ir.addColorStop(1, '#5d6b35')
+    pctx.fillStyle = ir
+    pctx.beginPath(); pctx.ellipse(cx, 37, 4.2, 4.8, 0, 0, Math.PI * 2); pctx.fill()
+    // 竖瞳（状态：害怕缩瞳、眯眼不见、正常细竖）
+    if (!s.happy && !s.sleepy && !s.blink && !s.pat) {
+      pctx.fillStyle = '#1a1410'
+      const pupilR = s.scared ? 1.1 : 1.7
+      pctx.beginPath(); pctx.ellipse(cx, 37, pupilR, 3.9, 0, 0, Math.PI * 2); pctx.fill()
+    }
+    // 高光
+    pctx.fillStyle = 'rgba(255,255,255,0.85)'
+    pctx.beginPath(); pctx.arc(cx - 1.4, 34.8, 1.2, 0, Math.PI * 2); pctx.fill()
+    pctx.beginPath(); pctx.arc(cx + 1.8, 38.6, 0.7, 0, Math.PI * 2); pctx.fill()
+    // 眼皮
+    pctx.strokeStyle = 'rgba(122,74,36,0.75)'
+    pctx.lineWidth = 1.2
+    if (s.blink || s.pat) {
+      pctx.beginPath(); pctx.moveTo(cx - 5, 37); pctx.quadraticCurveTo(cx, 34.4, cx + 5, 37); pctx.stroke()
+      pctx.fillStyle = FUR_HI
+      pctx.beginPath(); pctx.ellipse(cx, 37, 5.6, 5, 0, 0, Math.PI * 2); pctx.fill()
+    } else if (s.happy) {
+      // 眯眼
+      pctx.beginPath(); pctx.moveTo(cx - 5, 37.4); pctx.quadraticCurveTo(cx, 34.6, cx + 5, 37.4); pctx.stroke()
+      pctx.fillStyle = FUR_HI
+      pctx.beginPath(); pctx.ellipse(cx, 37, 5.6, 3.4, 0, 0, Math.PI * 2); pctx.fill()
+    } else if (s.sleepy) {
+      // 半垂眼皮
+      pctx.fillStyle = 'rgba(232,148,74,0.95)'
+      pctx.beginPath(); pctx.ellipse(cx, 33.6, 5.8, 4.2, 0, Math.PI, 0); pctx.fill()
+    } else if (s.scared) {
+      // 全睁
+      pctx.beginPath(); pctx.ellipse(cx, 37, 5.4, 6.2, 0, 0, Math.PI * 2); pctx.stroke()
+    } else {
+      pctx.beginPath(); pctx.moveTo(cx - 5, 37); pctx.quadraticCurveTo(cx, 34.8, cx + 5, 37); pctx.stroke()
+    }
+    void dir
+  }
+  eye(52, -1)
+  eye(72, 1)
+
+  // 鼻 + 嘴 + 人中
+  pctx.fillStyle = '#e58a8e'
+  pctx.beginPath(); pctx.moveTo(58.5, 44); pctx.lineTo(65.5, 44); pctx.lineTo(62, 47); pctx.closePath(); pctx.fill()
+  pctx.strokeStyle = 'rgba(122,74,36,0.7)'
+  pctx.lineWidth = 1.2
+  pctx.beginPath()
+  pctx.moveTo(62, 47)
+  pctx.lineTo(62, 49)
+  pctx.moveTo(62, 49)
+  pctx.quadraticCurveTo(58, 51.5, 55, 50.5)
+  pctx.moveTo(62, 49)
+  pctx.quadraticCurveTo(66, 51.5, 69, 50.5)
+  pctx.stroke()
+  if (s.happy) {
+    pctx.fillStyle = '#d96a6f'
+    pctx.beginPath(); pctx.ellipse(62, 51.5, 3, 2.2, 0, 0, Math.PI * 2); pctx.fill()
+  }
+
+  // 胡须（细长微弯）
+  pctx.strokeStyle = 'rgba(90,60,35,0.6)'
+  pctx.lineWidth = 0.9
+  pctx.beginPath()
+  pctx.moveTo(47, 44); pctx.quadraticCurveTo(36, 42.5, 28, 44)
+  pctx.moveTo(47, 47.5); pctx.quadraticCurveTo(36, 47.5, 27, 50.5)
+  pctx.moveTo(48, 51); pctx.quadraticCurveTo(38, 53, 30, 57)
+  pctx.moveTo(77, 44); pctx.quadraticCurveTo(88, 42.5, 96, 44)
+  pctx.moveTo(77, 47.5); pctx.quadraticCurveTo(88, 47.5, 97, 50.5)
+  pctx.moveTo(76, 51); pctx.quadraticCurveTo(86, 53, 94, 57)
+  pctx.stroke()
+
+  pctx.restore()
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r)
+  ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r)
+  ctx.arcTo(x, y, x + w, y, r)
+  ctx.closePath()
+  ctx.fill()
+}
+
+/* 写实版配件 */
+function drawRealAccessory(s) {
+  pctx.save()
+  if (cond === 'rain') {
+    // 伞（半透明，画在头顶上方）
+    pctx.fillStyle = 'rgba(80,130,190,0.75)'
+    pctx.beginPath()
+    pctx.moveTo(50, 14); pctx.lineTo(55, -4)
+    pctx.arc(62, -4, 19, Math.PI, 0, true)
+    pctx.lineTo(74, 14); pctx.closePath()
+    pctx.fill()
+    pctx.strokeStyle = 'rgba(50,90,150,0.8)'; pctx.lineWidth = 1.6
+    pctx.beginPath(); pctx.moveTo(62, -4); pctx.lineTo(62, 16); pctx.stroke()
+    // 伞骨
+    pctx.strokeStyle = 'rgba(255,255,255,0.4)'; pctx.lineWidth = 1
+    pctx.beginPath(); pctx.moveTo(43, -4); pctx.lineTo(62, -4); pctx.moveTo(62, -4); pctx.lineTo(81, -4); pctx.stroke()
+    // 雨滴
+    pctx.fillStyle = 'rgba(110,165,225,0.85)'
+    for (const [x, y] of [[32, 22], [92, 28]]) {
+      pctx.beginPath(); pctx.ellipse(x, y, 1.8, 3.6, 0, 0, Math.PI * 2); pctx.fill()
+    }
+  } else if (cond === 'snow') {
+    pctx.fillStyle = '#d94a52'
+    roundRect(pctx, 46, 56, 32, 8, 4)
+    pctx.beginPath(); pctx.moveTo(74, 60); pctx.quadraticCurveTo(80, 64, 76, 71); pctx.quadraticCurveTo(71, 65, 74, 60); pctx.fill()
+    pctx.strokeStyle = 'rgba(150,205,255,0.9)'; pctx.lineWidth = 1.3
+    for (const [x, y] of [[28, 20], [96, 32]]) {
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3
+        pctx.beginPath(); pctx.moveTo(x, y); pctx.lineTo(x + Math.cos(a) * 5, y + Math.sin(a) * 5); pctx.stroke()
+      }
+    }
+  } else if (cond === 'thunder') {
+    pctx.fillStyle = '#f2c94c'
+    pctx.beginPath()
+    pctx.moveTo(96, 22); pctx.lineTo(86, 36); pctx.lineTo(93, 36); pctx.lineTo(89, 50)
+    pctx.lineTo(102, 31); pctx.lineTo(95, 31); pctx.closePath()
+    pctx.fill()
+  } else if (cond === 'clear' && period === 'day') {
+    pctx.fillStyle = 'rgba(255,184,77,0.95)'
+    pctx.beginPath(); pctx.arc(94, 16, 9, 0, Math.PI * 2); pctx.fill()
+    pctx.strokeStyle = 'rgba(240,160,32,0.9)'; pctx.lineWidth = 2
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4 + petTime * 0.5
+      pctx.beginPath()
+      pctx.moveTo(94 + Math.cos(a) * 13, 16 + Math.sin(a) * 13)
+      pctx.lineTo(94 + Math.cos(a) * 18, 16 + Math.sin(a) * 18)
+      pctx.stroke()
+    }
+  } else if (cond === 'clear' && period === 'night') {
+    pctx.fillStyle = '#f2ecdc'
+    pctx.beginPath(); pctx.arc(94, 18, 9, 0, Math.PI * 2); pctx.fill()
+    pctx.beginPath(); pctx.arc(98, 13, 9, 0, Math.PI * 2); pctx.fill('evenodd')
+  } else if (cond === 'partly') {
+    pctx.fillStyle = 'rgba(190,205,225,0.9)'
+    pctx.beginPath(); pctx.ellipse(24, 18, 12, 7, 0, 0, Math.PI * 2); pctx.fill()
+    pctx.beginPath(); pctx.ellipse(32, 14, 8, 6, 0, 0, Math.PI * 2); pctx.fill()
+  } else if (cond === 'fog') {
+    pctx.fillStyle = 'rgba(210,216,224,0.7)'
+    pctx.beginPath(); pctx.ellipse(30, 24, 14, 5, 0, 0, Math.PI * 2); pctx.fill()
+    pctx.beginPath(); pctx.ellipse(96, 16, 12, 4, 0, 0, Math.PI * 2); pctx.fill()
+  }
+  pctx.restore()
+}
+
+/* ═══ 可爱卡通（v3 保留） ═══ */
+const FUR_C = '#f0a05c', BELLY_C = '#fde8c8', OUT_C = '#7a4a24', BLUSH_C = '#ff9a9e', INNER_C = '#ffb3ba', EYE_C = '#3a2a1a'
+
+function drawCutePet() {
+  const s = petState()
+  pctx.clearRect(0, 0, pet.width, pet.height)
+  pctx.save()
+  pctx.scale(pet.width / 120, pet.height / 110)
+  let breath = 1 + Math.sin(petTime * 1.7) * 0.02
+  if (s.pat) breath = 1 + Math.sin(petTime * 28) * 0.07 * Math.max(0, 1 - (petTime - patUntil + 0.8) / 0.8)
+  pctx.translate(60, 58); pctx.scale(breath, 2 - breath); pctx.translate(-60, -58)
+
+  const tailAng = Math.sin(petTime * 2.6) * 0.3 + (s.happy ? 0.4 : 0)
+  pctx.save(); pctx.translate(76, 88); pctx.rotate(tailAng)
+  pctx.fillStyle = FUR_C; pctx.strokeStyle = OUT_C; pctx.lineWidth = 2
+  pctx.beginPath(); pctx.moveTo(0, 0); pctx.quadraticCurveTo(16, -2, 20, -16); pctx.quadraticCurveTo(12, -20, 8, -10); pctx.closePath(); pctx.fill(); pctx.stroke()
+  pctx.restore()
+
+  pctx.fillStyle = FUR_C; pctx.strokeStyle = OUT_C; pctx.lineWidth = 2
+  roundRect(pctx, 40, 74, 40, 26, 13)
+  pctx.fillStyle = BELLY_C
+  pctx.beginPath(); pctx.ellipse(60, 88, 12, 8, 0, 0, Math.PI * 2); pctx.fill()
+  pctx.fillStyle = FUR_C
+  pctx.beginPath(); pctx.ellipse(48, 99, 6, 4.5, 0, 0, Math.PI * 2); pctx.fill()
+  pctx.beginPath(); pctx.ellipse(72, 99, 6, 4.5, 0, 0, Math.PI * 2); pctx.fill()
+
+  drawCuteAccessory(s)
+
+  pctx.fillStyle = FUR_C
+  pctx.beginPath(); pctx.arc(60, 46, 21, 0, Math.PI * 2); pctx.fill(); pctx.stroke()
+  const twitch = cond === 'thunder' ? Math.sin(petTime * 36) * 2 : 0
+  pctx.fillStyle = FUR_C
+  pctx.beginPath(); pctx.moveTo(40, 36 + twitch); pctx.quadraticCurveTo(38, 16, 50, 16); pctx.quadraticCurveTo(52, 24, 52, 30); pctx.closePath(); pctx.fill(); pctx.stroke()
+  pctx.beginPath(); pctx.moveTo(80, 36 - twitch); pctx.quadraticCurveTo(82, 16, 70, 16); pctx.quadraticCurveTo(68, 24, 68, 30); pctx.closePath(); pctx.fill(); pctx.stroke()
+  pctx.fillStyle = INNER_C
+  pctx.beginPath(); pctx.moveTo(43, 33); pctx.quadraticCurveTo(42, 21, 48, 21); pctx.quadraticCurveTo(49, 26, 49, 30); pctx.closePath(); pctx.fill()
+  pctx.beginPath(); pctx.moveTo(77, 33); pctx.quadraticCurveTo(78, 21, 72, 21); pctx.quadraticCurveTo(71, 26, 71, 30); pctx.closePath(); pctx.fill()
+
+  pctx.fillStyle = BLUSH_C
+  pctx.beginPath(); pctx.ellipse(41, 54, 4.5, 3, 0, 0, Math.PI * 2); pctx.fill()
+  pctx.beginPath(); pctx.ellipse(79, 54, 4.5, 3, 0, 0, Math.PI * 2); pctx.fill()
+
+  pctx.fillStyle = EYE_C
+  if (s.blink || s.pat) {
+    pctx.strokeStyle = EYE_C; pctx.lineWidth = 2
+    pctx.beginPath(); pctx.moveTo(51, 46); pctx.lineTo(58, 46); pctx.stroke()
+    pctx.beginPath(); pctx.moveTo(62, 46); pctx.lineTo(69, 46); pctx.stroke()
+  } else if (s.happy) {
+    pctx.strokeStyle = EYE_C; pctx.lineWidth = 2.4; pctx.lineCap = 'round'
+    pctx.beginPath(); pctx.arc(54.5, 46, 4, Math.PI * 1.05, Math.PI * 1.95); pctx.stroke()
+    pctx.beginPath(); pctx.arc(65.5, 46, 4, Math.PI * 1.05, Math.PI * 1.95); pctx.stroke()
+  } else if (s.scared) {
+    pctx.beginPath(); pctx.arc(54.5, 46, 4.6, 0, Math.PI * 2); pctx.fill()
+    pctx.beginPath(); pctx.arc(65.5, 46, 4.6, 0, Math.PI * 2); pctx.fill()
+    pctx.fillStyle = '#fff'
+    pctx.beginPath(); pctx.arc(52.8, 44.5, 1.6, 0, Math.PI * 2); pctx.fill()
+    pctx.beginPath(); pctx.arc(63.8, 44.5, 1.6, 0, Math.PI * 2); pctx.fill()
+  } else if (s.sleepy) {
+    pctx.strokeStyle = EYE_C; pctx.lineWidth = 2.4; pctx.lineCap = 'round'
+    pctx.beginPath(); pctx.arc(54.5, 47, 3.6, Math.PI * 1.1, Math.PI * 1.9); pctx.stroke()
+    pctx.beginPath(); pctx.arc(65.5, 47, 3.6, Math.PI * 1.1, Math.PI * 1.9); pctx.stroke()
+  } else {
+    pctx.beginPath(); pctx.arc(54.5, 46, 3.6, 0, Math.PI * 2); pctx.fill()
+    pctx.beginPath(); pctx.arc(65.5, 46, 3.6, 0, Math.PI * 2); pctx.fill()
+    pctx.fillStyle = '#fff'
+    pctx.beginPath(); pctx.arc(53.4, 44.8, 1.4, 0, Math.PI * 2); pctx.fill()
+    pctx.beginPath(); pctx.arc(64.4, 44.8, 1.4, 0, Math.PI * 2); pctx.fill()
+  }
+  pctx.fillStyle = '#e57a7f'
+  pctx.beginPath(); pctx.ellipse(60, 52, 2.4, 1.8, 0, 0, Math.PI * 2); pctx.fill()
+  pctx.strokeStyle = OUT_C; pctx.lineWidth = 1.8; pctx.lineCap = 'round'
+  pctx.beginPath()
+  pctx.moveTo(60, 54); pctx.quadraticCurveTo(57, 57.5, 54.5, 57)
+  pctx.moveTo(60, 54); pctx.quadraticCurveTo(63, 57.5, 65.5, 57)
+  pctx.stroke()
+  if (s.happy) {
+    pctx.fillStyle = '#d96a6f'
+    pctx.beginPath(); pctx.ellipse(60, 58.5, 3.6, 2.8, 0, 0, Math.PI * 2); pctx.fill()
+  }
+  pctx.strokeStyle = 'rgba(122,74,36,0.55)'; pctx.lineWidth = 1.2
+  pctx.beginPath()
+  pctx.moveTo(42, 50); pctx.lineTo(30, 47)
+  pctx.moveTo(42, 54); pctx.lineTo(30, 55)
+  pctx.moveTo(78, 50); pctx.lineTo(90, 47)
+  pctx.moveTo(78, 54); pctx.lineTo(90, 55)
+  pctx.stroke()
+  pctx.restore()
+}
+
+function drawCuteAccessory(s) {
+  pctx.save()
+  if (cond === 'rain') {
+    pctx.fillStyle = '#5b8fd9'
+    pctx.beginPath(); pctx.moveTo(58, 12); pctx.lineTo(63, -6); pctx.arc(60, -6, 17, Math.PI, 0, true); pctx.lineTo(63, -6); pctx.closePath(); pctx.fill()
+    pctx.strokeStyle = '#3a6bb0'; pctx.lineWidth = 2
+    pctx.beginPath(); pctx.moveTo(60, -6); pctx.lineTo(60, 14); pctx.stroke()
+    pctx.strokeStyle = 'rgba(255,255,255,0.5)'
+    pctx.beginPath(); pctx.moveTo(48, -6); pctx.lineTo(72, -6); pctx.stroke()
+    pctx.fillStyle = 'rgba(120,170,230,0.85)'
+    for (const [x, y] of [[34, 14], [86, 20]]) { pctx.beginPath(); pctx.ellipse(x, y, 2, 4, 0, 0, Math.PI * 2); pctx.fill() }
+  } else if (cond === 'snow') {
+    pctx.fillStyle = '#e2545c'
+    roundRect(pctx, 42, 56, 36, 9, 4)
+    pctx.beginPath(); pctx.moveTo(72, 61); pctx.quadraticCurveTo(78, 66, 74, 72); pctx.quadraticCurveTo(70, 66, 72, 61); pctx.fill()
+    pctx.strokeStyle = 'rgba(140,200,255,0.9)'; pctx.lineWidth = 1.4
+    for (const [x, y] of [[30, 18], [88, 30]]) {
+      for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; pctx.beginPath(); pctx.moveTo(x, y); pctx.lineTo(x + Math.cos(a) * 5, y + Math.sin(a) * 5); pctx.stroke() }
+    }
+  } else if (cond === 'thunder') {
+    pctx.fillStyle = '#f2c94c'
+    pctx.beginPath(); pctx.moveTo(90, 24); pctx.lineTo(81, 38); pctx.lineTo(88, 38); pctx.lineTo(84, 50); pctx.lineTo(96, 32); pctx.lineTo(89, 32); pctx.closePath(); pctx.fill()
+  } else if (cond === 'clear' && period === 'day') {
+    pctx.fillStyle = '#ffb84d'
+    pctx.beginPath(); pctx.arc(90, 18, 8, 0, Math.PI * 2); pctx.fill()
+    pctx.strokeStyle = '#f0a020'; pctx.lineWidth = 2
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 + petTime * 0.5; pctx.beginPath(); pctx.moveTo(90 + Math.cos(a) * 12, 18 + Math.sin(a) * 12); pctx.lineTo(90 + Math.cos(a) * 17, 18 + Math.sin(a) * 17); pctx.stroke() }
+  } else if (cond === 'clear' && period === 'night') {
+    pctx.fillStyle = '#f2ecdc'
+    pctx.beginPath(); pctx.arc(90, 20, 9, 0, Math.PI * 2); pctx.fill()
+    pctx.beginPath(); pctx.arc(94, 15, 9, 0, Math.PI * 2); pctx.fill('evenodd')
+  } else if (cond === 'partly') {
+    pctx.fillStyle = 'rgba(190,205,225,0.9)'
+    pctx.beginPath(); pctx.ellipse(26, 18, 12, 7, 0, 0, Math.PI * 2); pctx.fill()
+    pctx.beginPath(); pctx.ellipse(34, 14, 8, 6, 0, 0, Math.PI * 2); pctx.fill()
+  }
+  pctx.restore()
+}
+
+/* ═══ 像素（v3 保留） ═══ */
+const pxCanvas = document.createElement('canvas')
+pxCanvas.width = 32; pxCanvas.height = 30
+const pxc = pxCanvas.getContext('2d')
+
+function drawPixelPet() {
+  const s = petState()
+  pxc.clearRect(0, 0, 32, 30)
+  const F = '#f0a05c', B = '#fde8c8', E = '#3a2a1a', P = '#ffb3ba'
+  const px = (x, y, w, h, c) => { pxc.fillStyle = c; pxc.fillRect(x, y, w, h) }
+  const wag = Math.round(Math.sin(petTime * 3) * 1.5)
+  px(26, 22, 2, 2, F); px(28 + wag, 20, 2, 2, F); px(29 + wag, 17, 2, 2, F)
+  px(10, 18, 13, 10, F); px(9, 20, 15, 7, B)
+  px(11, 26, 3, 2, F); px(19, 26, 3, 2, F)
+  px(9, 6, 15, 13, F)
+  px(7, 4, 3, 5, F); px(23, 4, 3, 5, F)
+  px(8, 5, 1, 2, P); px(24, 5, 1, 2, P)
+  if (cond === 'thunder') { px(12, 4, 1, 2, F); px(16, 3, 1, 3, F); px(20, 4, 1, 2, F) }
+  if (s.blink || s.pat || s.happy) { px(12, 11, 3, 1, E); px(18, 11, 3, 1, E) }
+  else if (s.scared) {
+    px(12, 10, 4, 4, E); px(17, 10, 4, 4, E)
+    px(13, 11, 1, 1, '#fff'); px(18, 11, 1, 1, '#fff')
+  } else if (s.sleepy) { px(12, 12, 3, 1, E); px(18, 12, 3, 1, E) }
+  else {
+    px(13, 10, 2, 3, E); px(18, 10, 2, 3, E)
+    px(13, 10, 1, 1, '#fff'); px(18, 10, 1, 1, '#fff')
+  }
+  px(15, 14, 3, 1, '#e57a7f')
+  px(10, 14, 2, 1, '#ff9a9e'); px(21, 14, 2, 1, '#ff9a9e')
+  if (cond === 'rain') { px(13, 0, 6, 1, '#5b8fd9'); px(14, 1, 4, 1, '#5b8fd9'); px(15, 2, 2, 2, '#3a6bb0') }
+  if (cond === 'snow') { px(12, 16, 8, 1, '#e2545c'); px(18, 17, 1, 3, '#e2545c') }
+  if (cond === 'thunder') { px(26, 6, 3, 5, '#f2c94c'); px(25, 7, 3, 1, '#f2c94c') }
+  if (cond === 'clear' && period === 'day') { px(25, 3, 2, 2, '#ffb84d') }
+  if (cond === 'clear' && period === 'night') { px(26, 3, 2, 2, '#f2ecdc'); px(27, 2, 1, 1, '#f2ecdc') }
+  if (cond === 'partly') { px(2, 4, 5, 2, 'rgba(190,205,225,0.9)'); px(4, 3, 3, 2, 'rgba(190,205,225,0.9)') }
+  pctx.clearRect(0, 0, pet.width, pet.height)
+  pctx.imageSmoothingEnabled = false
+  pctx.drawImage(pxCanvas, 0, 0, 32, 30, 8, 2, pet.width - 16, pet.height - 4)
+}
+
+/* ═══ 雾 ═══ */
+const fog = $('fogCanvas')
+const fctx = fog.getContext('2d')
+let blobs = []
+function initFog() {
+  fog.width = window.innerWidth
+  fog.height = window.innerHeight
+  blobs = []
+  for (let i = 0; i < 7; i++) {
+    blobs.push({
+      x: Math.random() * fog.width, y: Math.random() * fog.height,
+      r: 180 + Math.random() * 260,
+      vx: (Math.random() - 0.5) * 14, vy: (Math.random() - 0.5) * 6,
+      a: 0.028 + Math.random() * 0.03,
+    })
+  }
+}
+function drawFog(t) {
+  fctx.clearRect(0, 0, fog.width, fog.height)
+  if (cond !== 'fog') return
+  for (const b of blobs) {
+    b.x += b.vx * 0.016
+    b.y += b.vy * 0.016 + Math.sin(t * 0.4 + b.x * 0.01) * 0.12
+    if (b.x < -b.r) b.x = fog.width + b.r
+    if (b.x > fog.width + b.r) b.x = -b.r
+    if (b.y < -b.r) b.y = fog.height + b.r
+    if (b.y > fog.height + b.r) b.y = -b.r
+    const g = fctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r)
+    g.addColorStop(0, `rgba(214,220,230,${b.a})`)
+    g.addColorStop(1, 'rgba(214,220,230,0)')
+    fctx.fillStyle = g
+    fctx.beginPath()
+    fctx.arc(b.x, b.y, b.r, 0, Math.PI * 2)
+    fctx.fill()
+  }
+}
+
+/* ═══ 主循环 ═══ */
+function loop(t) {
+  petTime = t / 1000
+  if (petTime > nextBlink) {
+    blinkUntil = petTime + 0.14
+    nextBlink = petTime + 1.6 + Math.random() * 3
+  }
+  if (petStyle === 'real') drawRealPet()
+  else if (petStyle === 'cute') drawCutePet()
+  else drawPixelPet()
+  drawFog(petTime)
+  requestAnimationFrame(loop)
+}
+
+/* ═══ 氛围层 ═══ */
+const ambient = $('ambient')
+let flashTimer = null
+
+function cloudSVG(scale) {
+  return `<svg class="cloud-svg" width="${150 * scale}" height="${54 * scale}" viewBox="0 0 150 54" fill="none">
+    <g fill="url(#cg)">
+      <ellipse cx="45" cy="38" rx="30" ry="14"/>
+      <ellipse cx="80" cy="28" rx="34" ry="18"/>
+      <ellipse cx="112" cy="38" rx="26" ry="12"/>
+    </g>
+    <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="rgba(245,248,252,0.9)"/>
+      <stop offset="1" stop-color="rgba(200,212,228,0.5)"/>
+    </linearGradient></defs>
+  </svg>`
+}
+
+function buildAmbient() {
+  ambient.replaceChildren()
+  const wash = document.createElement('div')
+  wash.className = 'wash'
+  wash.style.background = WASH[cond]
+  ambient.appendChild(wash)
+
+  if (style === 'b') {
+    if (cond === 'clear' && period === 'day') {
+      ambient.appendChild(Object.assign(document.createElement('div'), { className: 'sun-v2' }))
+    } else if (cond === 'partly' || cond === 'cloudy') {
+      const glow = Object.assign(document.createElement('div'), { className: 'sun-v2' })
+      glow.style.opacity = cond === 'cloudy' ? 0.35 : 0.6
+      glow.style.transform = 'scale(0.7)'
+      ambient.appendChild(glow)
+      const n = cond === 'cloudy' ? 3 : 2
+      for (let i = 0; i < n; i++) {
+        const cloud = document.createElement('div')
+        cloud.innerHTML = cloudSVG(0.8 + Math.random() * 0.6)
+        const el = cloud.firstChild
+        el.style.top = (6 + i * 16) + '%'
+        el.style.animationDelay = (-i * 15) + 's'
+        el.style.animationDuration = (38 + i * 12) + 's'
+        ambient.appendChild(el)
+      }
+    }
+    const top = Object.assign(document.createElement('div'), { className: 'grad-top' })
+    top.style.background = 'linear-gradient(180deg, var(--bg) 0%, transparent 100%)'
+    const bottom = Object.assign(document.createElement('div'), { className: 'grad-bottom' })
+    bottom.style.background = 'linear-gradient(0deg, var(--bg) 0%, transparent 100%)'
+    ambient.append(top, bottom)
+  }
+
+  if (period === 'night' && (cond === 'clear' || cond === 'partly' || cond === 'cloudy')) {
+    const moon = Object.assign(document.createElement('div'), { className: 'moon' })
+    ambient.appendChild(moon)
+    for (let i = 0; i < 22; i++) {
+      const st = Object.assign(document.createElement('div'), { className: 'star' })
+      st.style.left = Math.random() * 96 + '%'
+      st.style.top = Math.random() * 55 + '%'
+      st.style.animationDelay = Math.random() * 2.4 + 's'
+      ambient.appendChild(st)
+    }
+  }
+
+  const rnd = (a, b) => a + Math.random() * (b - a)
+  const make = (cls, extra) => {
+    const el = document.createElement('div')
+    el.className = cls
+    Object.assign(el.style, extra)
+    return el
+  }
+  if (cond === 'rain' || cond === 'thunder') {
+    for (let i = 0; i < 20; i++) ambient.appendChild(make('drop', { left: rnd(0, 100) + '%', animationDelay: -rnd(0, 0.9) + 's', animationDuration: rnd(0.6, 1.2) + 's' }))
+  } else if (cond === 'drizzle') {
+    for (let i = 0; i < 10; i++) ambient.appendChild(make('drop', { left: rnd(0, 100) + '%', opacity: 0.7, animationDelay: -rnd(0, 1.6) + 's', animationDuration: rnd(1.2, 2.0) + 's' }))
+  } else if (cond === 'snow') {
+    for (let i = 0; i < 18; i++) ambient.appendChild(make('flake', { left: rnd(0, 98) + '%', animationDelay: -rnd(0, 7) + 's', animationDuration: rnd(5, 10) + 's' }))
+  }
+
+  if (flashTimer) clearInterval(flashTimer)
+  flashTimer = null
+  if (cond === 'thunder') {
+    const strike = () => {
+      const f = $('flash')
+      f.style.animation = 'none'
+      void f.offsetWidth
+      f.style.animation = 'flashAnim 320ms ease-out'
+    }
+    flashTimer = setInterval(() => { if (Math.random() < 0.45) strike() }, 5000)
+    setTimeout(strike, 1200)
+  }
+}
+
+/* ═══ 主题/卡片/HUD ═══ */
+function applyTheme() {
+  const p = PALETTES[cond][mode]
+  const root = document.documentElement.style
+  root.setProperty('--bg', p.bg)
+  root.setProperty('--panel', p.p1)
+  root.setProperty('--panel2', p.p2)
+  root.setProperty('--border', p.bd)
+  root.setProperty('--text', p.tx)
+  root.setProperty('--text2', p.t2)
+  root.setProperty('--brand', p.brand)
+  renderCard()
+  $('hudTemp').textContent = TEMP[cond] + '°C'
+}
+
+function renderCard() {
+  const temp = TEMP[cond]
+  $('card').innerHTML = `
+    <div class="card-head">
+      <span class="card-title">当前天气</span>
+      <div class="card-right"><span class="locate-tag">📍 自动定位</span><span class="sound-btn">🔇</span></div>
+    </div>
+    <div class="mini-scene">
+      <span class="big-icon">${ICONS[cond]}</span>
+      <div class="cond"><b>${LABELS[cond]}</b><span>${period === 'day' ? '白天' : '夜间'} · 中国</span></div>
+      <span class="temp">${temp}°</span>
+    </div>
+    <div class="stats">
+      <div class="s"><span>体感</span><b>${temp + 4}°C</b></div>
+      <div class="s"><span>湿度</span><b>${cond === 'snow' ? 62 : 78}%</b></div>
+      <div class="s"><span>风速</span><b>${cond === 'thunder' ? 18 : 6} km/h</b></div>
+    </div>
+    <div class="companions"><span>今日伙伴</span><span class="pair">${COMPANIONS[cond]}</span><span class="season">夏季</span></div>
+    <div class="fact"><b>小知识</b>${FACTS[cond]}</div>
+    <div class="card-meta">更新于 12:30</div>
+  `
+}
+
+/* ═══ 控制 ═══ */
+document.querySelectorAll('#controls [data-cond]').forEach(b => b.addEventListener('click', () => {
+  cond = b.dataset.cond
+  document.querySelectorAll('#controls [data-cond]').forEach(x => x.classList.toggle('active', x === b))
+  applyTheme(); buildAmbient()
+}))
+document.querySelectorAll('#controls [data-pet]').forEach(b => b.addEventListener('click', () => {
+  petStyle = b.dataset.pet
+  document.querySelectorAll('#controls [data-pet]').forEach(x => x.classList.toggle('active', x === b))
+}))
+document.querySelectorAll('#controls [data-style]').forEach(b => b.addEventListener('click', () => {
+  style = b.dataset.style
+  document.querySelectorAll('#controls [data-style]').forEach(x => x.classList.toggle('active', x === b))
+  buildAmbient()
+}))
+document.querySelectorAll('#controls [data-mode]').forEach(b => b.addEventListener('click', () => {
+  mode = b.dataset.mode
+  document.querySelectorAll('#controls [data-mode]').forEach(x => x.classList.toggle('active', x === b))
+  applyTheme()
+}))
+document.querySelectorAll('#controls [data-period]').forEach(b => b.addEventListener('click', () => {
+  period = b.dataset.period
+  document.querySelectorAll('#controls [data-period]').forEach(x => x.classList.toggle('active', x === b))
+  applyTheme(); buildAmbient()
+}))
+$('hud').addEventListener('click', () => { patUntil = petTime + 0.8 })
+
+/* ═══ 启动 ═══ */
+initFog()
+window.addEventListener('resize', initFog)
+applyTheme()
+buildAmbient()
+requestAnimationFrame(loop)
+</script>
+</body>
+</html>

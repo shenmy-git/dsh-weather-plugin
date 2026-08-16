@@ -1,0 +1,158 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+  overflow: hidden;
+}
+
+/* ── collapsed row: one compact line ── */
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  color: var(--dsw-alias-label-primary);
+  text-align: left;
+}
+
+.bar:hover {
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.barIcon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.barTemp {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.barCity {
+  font-size: 12px;
+  color: var(--dsw-alias-label-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.barCond {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  white-space: nowrap;
+}
+
+.barSpacer {
+  flex: 1;
+}
+
+.soundButton {
+  font-size: 13px;
+  line-height: 1;
+  padding: 3px 7px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.soundButton:hover {
+  opacity: 0.8;
+}
+
+.barArrow {
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* ── expanded detail ── */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.statLabel {
+  font-size: 10px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.statValue {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.companions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.companionPair {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.seasonChip {
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-bg-layer-2);
+  border: 1px solid var(--dsw-alias-border-l1);
+}
+
+.fact {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-bg-layer-2);
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+
+.factLabel {
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+  margin-right: 5px;
+}
+
+.meta {
+  font-size: 10px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.placeholder {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  padding: 8px 12px;
+}

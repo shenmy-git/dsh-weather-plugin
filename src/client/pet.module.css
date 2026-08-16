@@ -1,0 +1,8 @@
+/* The weather pet: the official DeepSeek FishLogo whale on canvas. */
+
+.canvas {
+  display: block;
+  width: 120px;
+  height: 90px;
+  filter: drop-shadow(0 5px 12px rgba(10, 90, 150, 0.28));
+}

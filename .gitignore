@@ -1,0 +1,14 @@
+# 依赖与构建产物（git 安装时由 prepare 脚本现场构建）
+node_modules/
+lib/
+
+# 凭证与密钥——绝不能提交！
+.npmrc
+
+# 本地开发资产（CDP 测试脚本/截图/临时目录）
+shots/
+*.tgz
+
+# 编辑器
+.vscode/
+.idea/
